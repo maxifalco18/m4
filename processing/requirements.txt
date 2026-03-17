@@ -1,0 +1,19 @@
+# processing/requirements.txt
+# Dependencias Python para los jobs de Spark
+# Instalar con: pip install -r processing/requirements.txt
+
+# Core Spark
+pyspark==3.5.0
+
+# AWS S3 access desde Python (para scripts auxiliares, no dentro del job)
+boto3==1.34.0
+s3fs==2024.1.0           # Interfaz tipo filesystem para S3 (usado en validación de schema)
+
+# Parquet / Arrow
+pyarrow==15.0.0          # Lectura de footers Parquet para schema validation
+
+# PostgreSQL
+psycopg2-binary==2.9.9   # Driver PG para seed_data.py
+
+# Utilities
+python-dotenv==1.0.0     # Carga .env automáticamente
