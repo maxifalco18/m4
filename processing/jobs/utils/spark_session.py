@@ -67,9 +67,10 @@ def get_spark_session(app_name: str, mode: Optional[str] = None):
         # Cubre: product_category_translation (~70 filas), sellers (~3K)
         .config("spark.sql.autoBroadcastJoinThreshold", str(50 * 1024 * 1024))  # 50 MB
 
-        # ── Formato de Output: Parquet con Snappy ─────────────────────
+        # ── Formato de Output: Parquet con Snappy y Dynamic Overwrites ─
         .config("spark.sql.parquet.compression.codec", "snappy")
         .config("spark.sql.parquet.mergeSchema", "false")  # Performance: no merge schemas en lectura
+        .config("spark.sql.sources.partitionOverwriteMode", "dynamic") # CRITICO: Solo sobreescribe las particiones modificadas, no toda la tabla
 
         # ── Optimizaciones de Shuffle ─────────────────────────────────
         # 200 particiones es el default de Spark — apropiado para desarrollo.
