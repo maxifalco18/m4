@@ -1,0 +1,91 @@
+# streaming/docker-compose.yml
+# ==============================
+# Despliega Apache Kafka + Zookeeper + Kafka UI en Docker Compose.
+#
+# Diseñado para EC2 Free Tier (t2.micro / t2.small).
+# En producción usar un cluster Kafka multi-broker o Amazon MSK.
+#
+# Uso:
+#   docker compose up -d
+#   bash streaming/scripts/create_topics.sh
+#   python streaming/producer/weather_producer.py
+#
+# Acceder a Kafka UI: http://localhost:8090 (solo abrir en Security Group para tu IP)
+
+version: '3.9'
+
+services:
+
+  # ── Zookeeper ──────────────────────────────────────────────────────────────
+  # Kafka requiere Zookeeper para coordinación de brokers (reemplazado por KRaft en Kafka 3.x+)
+  # Para este proyecto educativo, usamos la arquitectura clásica Zookeeper.
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.0
+    container_name: pi-m4-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    volumes:
+      - zookeeper-data:/var/lib/zookeeper/data
+      - zookeeper-logs:/var/lib/zookeeper/log
+    networks:
+      - kafka-net
+    restart: unless-stopped
+
+  # ── Kafka Broker ───────────────────────────────────────────────────────────
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: pi-m4-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"     # Para clientes en la misma máquina (producer/consumer local)
+      - "29092:29092"   # Para clientes externos (Spark Structured Streaming desde otro host)
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1  # 1 replica (single broker para Free Tier)
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'   # Crear topics explícitamente
+      KAFKA_LOG_RETENTION_HOURS: 24              # Retener eventos 24h (limitado en Free Tier)
+      KAFKA_LOG_SEGMENT_BYTES: 10485760          # Segmentos de 10 MB
+      KAFKA_NUM_PARTITIONS: 3                    # 3 particiones por topic por defecto
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    networks:
+      - kafka-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ── Kafka UI (Provectus) ───────────────────────────────────────────────────
+  # Interfaz web para monitorear topics, mensajes, consumer groups y offsets.
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: pi-m4-kafka-ui
+    depends_on:
+      kafka:
+        condition: service_healthy
+    ports:
+      - "8090:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: pi-m4-local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+    networks:
+      - kafka-net
+    restart: unless-stopped
+
+volumes:
+  zookeeper-data:
+  zookeeper-logs:
+  kafka-data:
+
+networks:
+  kafka-net:
+    driver: bridge
