@@ -1,0 +1,129 @@
+# orchestration/docker-compose.yml
+# ==================================
+# Despliega Apache Airflow en Docker Compose usando LocalExecutor.
+#
+# LocalExecutor vs CeleryExecutor:
+#   - LocalExecutor: ejecuta tasks en subprocesos del mismo contenedor.
+#     Adecuado para Free Tier (t2.micro / t2.small). Sin Redis ni workers.
+#   - CeleryExecutor: tasks en workers separados. Más escalable pero
+#     requiere más recursos (Redis, múltiples contenedores).
+#
+# Uso:
+#   1. cp .env.example .env && nano .env  (configurar variables)
+#   2. mkdir -p ./logs ./plugins
+#   3. echo -e "AIRFLOW_UID=$(id -u)" >> .env
+#   4. docker compose up airflow-init    (inicializar BD)
+#   5. docker compose up -d              (levantar servicios)
+#   6. Acceder a http://localhost:8080   (admin/admin)
+#
+# En EC2 (Free Tier):
+#   - Asegurarse de que el Security Group permita TCP 8080 (solo tu IP)
+#   - Acceder via: http://<EC2_PUBLIC_IP>:8080
+
+version: '3.9'
+
+x-airflow-common: &airflow-common
+  image: pi-m4-airflow:latest
+  build:
+    context: .
+    dockerfile: Dockerfile
+  environment:
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+    AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW__CORE__FERNET_KEY}
+    AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW__WEBSERVER__SECRET_KEY}
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+    AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+    AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
+    # Variables de negocio accesibles desde los DAGs
+    S3_BUCKET_NAME: ${S3_BUCKET_NAME}
+    AWS_REGION: ${AWS_REGION}
+    SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL}
+    AIRBYTE_API_KEY: ${AIRBYTE_API_KEY}
+    AIRBYTE_WORKSPACE_ID: ${AIRBYTE_WORKSPACE_ID}
+    # IAM Role via Instance Profile (sin access keys)
+    AWS_DEFAULT_REGION: ${AWS_REGION:-us-east-1}
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ./logs:/opt/airflow/logs
+    - ./plugins:/opt/airflow/plugins
+    - ../processing:/opt/airflow/processing   # Jobs Spark accesibles
+    - ../quality:/opt/airflow/quality         # Great Expectations
+    - /var/run/docker.sock:/var/run/docker.sock  # Para DockerOperator (opcional)
+  user: "${AIRFLOW_UID:-50000}:0"
+  depends_on:
+    postgres:
+      condition: service_healthy
+  networks:
+    - airflow-net
+
+services:
+
+  # ── PostgreSQL (backend de Airflow) ─────────────────────────────────────────
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 10s
+      retries: 5
+      start_period: 5s
+    networks:
+      - airflow-net
+    restart: unless-stopped
+
+  # ── Airflow Webserver ────────────────────────────────────────────────────────
+  airflow-webserver:
+    <<: *airflow-common
+    command: webserver
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  # ── Airflow Scheduler ────────────────────────────────────────────────────────
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8974/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  # ── Airflow Init (se ejecuta una sola vez) ───────────────────────────────────
+  airflow-init:
+    <<: *airflow-common
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        airflow db migrate
+        airflow users create \
+          --username admin \
+          --password admin \
+          --firstname Admin \
+          --lastname User \
+          --role Admin \
+          --email admin@pi-m4.local || true
+        echo "✅ Airflow inicializado"
+    restart: on-failure
+
+volumes:
+  postgres-db:
+
+networks:
+  airflow-net:
+    driver: bridge

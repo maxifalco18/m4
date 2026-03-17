@@ -1,0 +1,106 @@
+# .github/workflows/deploy_dags.yml
+# ====================================
+# GitHub Actions: despliega los DAGs a la instancia EC2 via SSH.
+#
+# Se ejecuta cuando hay un push a main con cambios en orchestration/dags/.
+# No despliega en pushes a dev (solo CI: lint + tests).
+#
+# Secrets requeridos en GitHub → Settings → Secrets:
+#   EC2_HOST:        IP pública o DNS de la instancia EC2
+#   EC2_USER:        usuario SSH (ej: ubuntu o ec2-user)
+#   EC2_SSH_KEY:     contenido de la clave PEM privada
+#   AIRFLOW_DAG_DIR: ruta en EC2 donde están los DAGs (ej: /home/ubuntu/m4/orchestration/dags)
+
+name: Deploy DAGs to EC2
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "orchestration/dags/**"
+      - "orchestration/Dockerfile"
+      - "orchestration/docker-compose.yml"
+
+jobs:
+  deploy-dags:
+    name: Deploy DAGs to Airflow on EC2
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Validar DAGs antes de deployar (ya lo hace ci.yml, pero por si acaso)
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install Airflow for DAG validation
+        run: |
+          pip install apache-airflow==2.9.0 --quiet
+          pip install apache-airflow-providers-amazon apache-airflow-providers-slack \
+                      apache-airflow-providers-http --quiet
+
+      - name: Validate DAG syntax before deploy
+        run: |
+          echo "=== Validando sintaxis de DAGs ==="
+          for dag_file in orchestration/dags/*.py; do
+            if [[ "$dag_file" != *"__pycache__"* ]] && [[ "$dag_file" != *"__init__"* ]]; then
+              python -c "
+          import importlib.util, sys
+          spec = importlib.util.spec_from_file_location('dag', '${dag_file}')
+          mod = importlib.util.module_from_spec(spec)
+          try:
+              spec.loader.exec_module(mod)
+              print(f'✅ ${dag_file} — OK')
+          except Exception as e:
+              print(f'❌ ${dag_file} — ERROR: {e}')
+              sys.exit(1)
+          "
+            fi
+          done
+
+      # Copiar DAGs a EC2 via SSH (rsync para solo transferir cambios)
+      - name: Configure SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/ec2_key.pem
+          chmod 600 ~/.ssh/ec2_key.pem
+          ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Sync DAGs to EC2 via rsync
+        run: |
+          echo "=== Sincronizando DAGs a EC2 ==="
+          rsync -avz --delete \
+            -e "ssh -i ~/.ssh/ec2_key.pem -o StrictHostKeyChecking=no" \
+            orchestration/dags/ \
+            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:${{ secrets.AIRFLOW_DAG_DIR }}/
+          echo "✅ DAGs sincronizados."
+
+      # Verificar que Airflow puede parsear los DAGs en el servidor
+      - name: Verify DAGs on EC2
+        run: |
+          ssh -i ~/.ssh/ec2_key.pem \
+            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
+            "cd ~/m4/orchestration && docker compose exec -T airflow-scheduler \
+             airflow dags list 2>&1 | grep -E '(etlt|streaming|ERROR)'"
+
+      - name: Notify deploy success to Slack
+        if: success()
+        run: |
+          curl -s -X POST "${{ secrets.SLACK_WEBHOOK_URL }}" \
+            -H 'Content-type: application/json' \
+            --data '{
+              "text": "🚀 *DAGs deployados a EC2*\nCommit: `${{ github.sha }}`\nBranch: `${{ github.ref_name }}`\nActor: `${{ github.actor }}`"
+            }' || true
+
+      - name: Notify deploy failure to Slack
+        if: failure()
+        run: |
+          curl -s -X POST "${{ secrets.SLACK_WEBHOOK_URL }}" \
+            -H 'Content-type: application/json' \
+            --data '{
+              "text": "❌ *Fallo en deploy de DAGs*\nCommit: `${{ github.sha }}`\nVer logs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }' || true
