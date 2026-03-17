@@ -1,0 +1,190 @@
+{
+  "_comment": "Políticas IAM para el Proyecto Integrador M4. Principio de mínimo privilegio (Least Privilege). NO adjuntar a usuarios — siempre usar Roles e Instance Profiles.",
+  "roles": {
+    "LakeFormationAdmin": {
+      "description": "Rol para el administrador de Lake Formation. Tiene acceso total al Data Lake para configurar permisos y el catálogo de Glue.",
+      "trust_policy": {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Effect": "Allow",
+            "Principal": { "Service": "lakeformation.amazonaws.com" },
+            "Action": "sts:AssumeRole"
+          }
+        ]
+      },
+      "managed_policies": [
+        "arn:aws:iam::aws:policy/AWSLakeFormationDataAdmin",
+        "arn:aws:iam::aws:policy/AWSGlueConsoleFullAccess"
+      ],
+      "inline_policies": {
+        "S3DataLakeAccess": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "FullDataLakeAccess",
+              "Effect": "Allow",
+              "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject", "s3:ListBucket", "s3:GetBucketLocation"],
+              "Resource": ["arn:aws:s3:::PI_BUCKET_NAME", "arn:aws:s3:::PI_BUCKET_NAME/*"]
+            }
+          ]
+        }
+      }
+    },
+
+    "AirbyteS3Role": {
+      "description": "Rol para Airbyte Cloud. Solo puede escribir en la capa raw/ del bucket. Principio de mínimo acceso.",
+      "trust_policy": {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Effect": "Allow",
+            "Principal": { "AWS": "arn:aws:iam::834209330880:root" },
+            "_comment_principal": "Cuenta AWS de Airbyte Cloud — verificar en la documentación oficial de Airbyte",
+            "Action": "sts:AssumeRole",
+            "Condition": {
+              "StringEquals": { "sts:ExternalId": "PI_AIRBYTE_EXTERNAL_ID" }
+            }
+          }
+        ]
+      },
+      "inline_policies": {
+        "AirbyteRawLayerWrite": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "WriteRawLayer",
+              "Effect": "Allow",
+              "Action": [
+                "s3:PutObject",
+                "s3:GetObject",
+                "s3:DeleteObject",
+                "s3:ListBucket",
+                "s3:ListBucketMultipartUploads",
+                "s3:AbortMultipartUpload",
+                "s3:ListMultipartUploadParts",
+                "s3:GetBucketLocation"
+              ],
+              "Resource": [
+                "arn:aws:s3:::PI_BUCKET_NAME",
+                "arn:aws:s3:::PI_BUCKET_NAME/raw/*"
+              ]
+            },
+            {
+              "Sid": "DenyNonRawAccess",
+              "Effect": "Deny",
+              "Action": "s3:*",
+              "Resource": [
+                "arn:aws:s3:::PI_BUCKET_NAME/processed/*",
+                "arn:aws:s3:::PI_BUCKET_NAME/gold/*"
+              ]
+            }
+          ]
+        }
+      }
+    },
+
+    "SparkProcessingRole": {
+      "description": "Rol para jobs de Spark en EC2/EMR. Lee raw y escribe en processed/gold. Sin acceso a la consola AWS.",
+      "trust_policy": {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Effect": "Allow",
+            "Principal": {
+              "Service": ["ec2.amazonaws.com", "elasticmapreduce.amazonaws.com"]
+            },
+            "Action": "sts:AssumeRole"
+          }
+        ]
+      },
+      "inline_policies": {
+        "SparkDataLakeRW": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "ReadRawLayer",
+              "Effect": "Allow",
+              "Action": ["s3:GetObject", "s3:ListBucket", "s3:GetBucketLocation"],
+              "Resource": [
+                "arn:aws:s3:::PI_BUCKET_NAME",
+                "arn:aws:s3:::PI_BUCKET_NAME/raw/*",
+                "arn:aws:s3:::PI_BUCKET_NAME/raw-streaming/*"
+              ]
+            },
+            {
+              "Sid": "WriteProcessedAndGold",
+              "Effect": "Allow",
+              "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject", "s3:ListBucket"],
+              "Resource": [
+                "arn:aws:s3:::PI_BUCKET_NAME/processed/*",
+                "arn:aws:s3:::PI_BUCKET_NAME/processed-streaming/*",
+                "arn:aws:s3:::PI_BUCKET_NAME/gold/*",
+                "arn:aws:s3:::PI_BUCKET_NAME/_checkpoints/*",
+                "arn:aws:s3:::PI_BUCKET_NAME/_logs/spark/*"
+              ]
+            },
+            {
+              "Sid": "GlueCatalogAccess",
+              "Effect": "Allow",
+              "Action": [
+                "glue:GetDatabase", "glue:GetDatabases",
+                "glue:GetTable", "glue:GetTables",
+                "glue:CreateTable", "glue:UpdateTable",
+                "glue:GetPartition", "glue:GetPartitions", "glue:BatchCreatePartition"
+              ],
+              "Resource": ["arn:aws:glue:*:PI_ACCOUNT_ID:catalog",
+                          "arn:aws:glue:*:PI_ACCOUNT_ID:database/*",
+                          "arn:aws:glue:*:PI_ACCOUNT_ID:table/*/*"]
+            }
+          ]
+        }
+      }
+    },
+
+    "AirflowEC2Role": {
+      "description": "Rol para la instancia EC2 que ejecuta Airflow. Combina permisos de S3, Glue, y capacidad de asumir el SparkProcessingRole para jobs remotos.",
+      "trust_policy": {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Effect": "Allow",
+            "Principal": { "Service": "ec2.amazonaws.com" },
+            "Action": "sts:AssumeRole"
+          }
+        ]
+      },
+      "inline_policies": {
+        "AirflowOrchestrationAccess": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "ReadAllLayersForMonitoring",
+              "Effect": "Allow",
+              "Action": ["s3:GetObject", "s3:ListBucket", "s3:GetBucketLocation"],
+              "Resource": [
+                "arn:aws:s3:::PI_BUCKET_NAME",
+                "arn:aws:s3:::PI_BUCKET_NAME/*"
+              ]
+            },
+            {
+              "Sid": "WriteGoldAndLogs",
+              "Effect": "Allow",
+              "Action": ["s3:PutObject", "s3:DeleteObject"],
+              "Resource": [
+                "arn:aws:s3:::PI_BUCKET_NAME/gold/*",
+                "arn:aws:s3:::PI_BUCKET_NAME/_logs/airflow/*"
+              ]
+            },
+            {
+              "Sid": "AssumeSparkRole",
+              "Effect": "Allow",
+              "Action": "sts:AssumeRole",
+              "Resource": "arn:aws:iam::PI_ACCOUNT_ID:role/SparkProcessingRole"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

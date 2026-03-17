@@ -1,0 +1,110 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "DenyInsecureTransport",
+      "Effect": "Deny",
+      "Principal": "*",
+      "Action": "s3:*",
+      "Resource": [
+        "arn:aws:s3:::PI_BUCKET_NAME",
+        "arn:aws:s3:::PI_BUCKET_NAME/*"
+      ],
+      "Condition": {
+        "Bool": {
+          "aws:SecureTransport": "false"
+        }
+      }
+    },
+    {
+      "Sid": "AllowLakeFormationAdmin",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::PI_ACCOUNT_ID:role/LakeFormationAdmin"
+      },
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject",
+        "s3:ListBucket",
+        "s3:GetBucketLocation"
+      ],
+      "Resource": [
+        "arn:aws:s3:::PI_BUCKET_NAME",
+        "arn:aws:s3:::PI_BUCKET_NAME/*"
+      ]
+    },
+    {
+      "Sid": "AllowAirflowEC2WriteGold",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::PI_ACCOUNT_ID:role/AirflowEC2Role"
+      },
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::PI_BUCKET_NAME",
+        "arn:aws:s3:::PI_BUCKET_NAME/processed/*",
+        "arn:aws:s3:::PI_BUCKET_NAME/gold/*",
+        "arn:aws:s3:::PI_BUCKET_NAME/_checkpoints/*",
+        "arn:aws:s3:::PI_BUCKET_NAME/_logs/*"
+      ]
+    },
+    {
+      "Sid": "AllowSparkEMRReadRaw",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::PI_ACCOUNT_ID:role/SparkProcessingRole"
+      },
+      "Action": [
+        "s3:GetObject",
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::PI_BUCKET_NAME",
+        "arn:aws:s3:::PI_BUCKET_NAME/raw/*",
+        "arn:aws:s3:::PI_BUCKET_NAME/raw-streaming/*"
+      ]
+    },
+    {
+      "Sid": "AllowSparkEMRWriteProcessedGold",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::PI_ACCOUNT_ID:role/SparkProcessingRole"
+      },
+      "Action": [
+        "s3:PutObject",
+        "s3:GetObject",
+        "s3:ListBucket",
+        "s3:DeleteObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::PI_BUCKET_NAME/processed/*",
+        "arn:aws:s3:::PI_BUCKET_NAME/processed-streaming/*",
+        "arn:aws:s3:::PI_BUCKET_NAME/gold/*",
+        "arn:aws:s3:::PI_BUCKET_NAME/_checkpoints/*"
+      ]
+    },
+    {
+      "Sid": "AllowAirbyteWriteRaw",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::PI_ACCOUNT_ID:role/AirbyteS3Role"
+      },
+      "Action": [
+        "s3:PutObject",
+        "s3:GetObject",
+        "s3:ListBucket",
+        "s3:AbortMultipartUpload",
+        "s3:ListMultipartUploadParts"
+      ],
+      "Resource": [
+        "arn:aws:s3:::PI_BUCKET_NAME",
+        "arn:aws:s3:::PI_BUCKET_NAME/raw/*"
+      ]
+    }
+  ]
+}

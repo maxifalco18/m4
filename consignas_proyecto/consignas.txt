@@ -1,0 +1,295 @@
+Proyecto Integrador
+ByHENRY ㅤ
+Lesson 8 of 9
+Contexto del proyecto y rol del estudiante
+
+Te desempeñas como Ingeniero de Datos en una organización que está migrando hacia una arquitectura moderna basada en la nube para gestionar grandes volúmenes de datos en crecimiento constante. La empresa necesita una solución escalable que le permita integrar información proveniente de diversas fuentes, con el fin de mejorar la toma de decisiones basada en datos confiables y actualizados.
+
+Tu rol consiste en diseñar e implementar un pipeline de tipo ETLT sobre una arquitectura de Data Lake, utilizando almacenamiento en la nube y formatos de archivo eficientes. Serás responsable de integrar datos con herramientas como Airbyte, procesarlos de forma distribuida mediante Apache Spark, y orquestar el flujo completo con Apache Airflow. Además, deberás automatizar algunas tareas clave del pipeline con GitHub Actions, aplicar buenas prácticas de seguridad en la nube y optimizar el rendimiento y los costos asociados al procesamiento y almacenamiento de datos.
+
+A modo de guía, se sugiere que el análisis se oriente a responder, al menos parcialmente, interrogantes como los siguientes:
+
+¿Cuáles son los productos más vendidos por categoría y cómo varía su demanda a lo largo del tiempo?
+
+¿Qué clientes presentan mayor frecuencia de compra y cuál es su ticket promedio mensual?
+
+¿Qué tiendas o regiones generan los mayores ingresos y cómo se comportan frente a la estacionalidad?
+
+¿Qué proporción de ventas proviene de clientes nuevos frente a clientes recurrentes?
+
+¿Qué relación existe entre el precio promedio y el volumen de ventas en cada categoría?
+
+¿Qué productos presentan mayores márgenes de rentabilidad considerando costos e ingresos?
+
+¿Cómo varía el desempeño de ventas en función del canal o método de pago utilizado?
+
+¿Qué patrones o anomalías pueden detectarse en las ventas en tiempo real (por ejemplo, picos de demanda o caídas abruptas)?
+
+¿Cómo impactan las promociones o descuentos en las ventas totales y en la rentabilidad por producto?
+
+¿Qué combinaciones de producto y cliente podrían identificarse como oportunidades para campañas de recomendación o fidelización?
+
+Estas preguntas no son obligatorias, pero servirán como guía para orientar el diseño del pipeline y la construcción de la capa analítica final, garantizando que las transformaciones, integraciones y procesos implementados respondan a necesidades reales del negocio.
+
+✨ Veamos de qué se trata ✨
+POWERPOINT (Ver archivo adjunto)
+
+
+Conoce los criterios de evaluación IMPORTANTE!!!
+
+*Adjunto Excel
+
+-------------------------------------------------------------------------------------------------------------
+
+#Primer Avance Proyecto Integrador
+Lesson 7 of 8
+Contexto del proyecto y rol del estudiante
+
+Como Ingeniero de Datos en una organización que está migrando hacia una arquitectura moderna en la nube, tu primer desafío es sentar las bases de un Data Lake bien estructurado.
+
+Tu rol consiste en definir la arquitectura del pipeline ETLT, establecer una estructura de capas clara sobre AWS S3, y aplicar buenas prácticas de gobernanza y seguridad con Lake Formation. Deberás justificar el stack tecnológico propuesto en función de su escalabilidad, integración y rendimiento, y conectar directamente las decisiones de diseño con las preguntas clave del negocio. Esta etapa es crítica para asegurar que la arquitectura soporte correctamente la ingesta, transformación y análisis de datos en fases posteriores.
+
+
+¿Empezamos?
+
+📝 Consignas
+Configuración del bucket S3 en AWS Free Tier para establecer la base del Data Lake, incluyendo la definición de la estructura en capas.
+
+Uso de AWS Lake Formation para la gestión de permisos, gobernanza y catalogación de datos dentro del Data Lake.
+
+Elaboración de un documento técnico que describa el diseño general del pipeline ETLT a implementar.
+
+Inclusión de un diagrama detallado de la arquitectura del pipeline, especificando las fuentes de datos, las herramientas utilizadas en cada etapa y el flujo completo de datos.
+
+Definición explícita del propósito de cada capa del Data Lake, justificando su rol dentro del flujo de procesamiento.
+
+Selección y justificación del stack tecnológico propuesto, considerando criterios como escalabilidad, facilidad de integración, rendimiento y adecuación al problema planteado.
+
+Identificación y análisis de las fuentes de datos disponibles en función de las preguntas de negocio que se busca responder, evaluando su relevancia y valor analítico.
+
+
+🤓 Conocimientos necesarios
+Arquitectura de Data Lakes
+
+Principios ETL
+
+Almacenamiento en la nube, seguridad y gobernanza de datos, documentación técnica
+
+💻 Tech Stack necesario
+AWS S3, 
+
+AWS Lake Formation
+
+Herramientas de diagramación (Draw.io(opens in a new tab), Lucidchart, Whimsical)
+
+AWS IAM (gestión básica de accesos) 
+
+🌟 Notas extra del avance:
+Se espera que el bucket esté correctamente estructurado y nombrado de acuerdo con las buenas prácticas de un Data Lake.
+
+El diagrama debe ser claro y mostrar herramientas concretas para cada etapa del pipeline.
+
+El análisis de fuentes debe estar directamente conectado con los casos de uso o preguntas de negocio que el pipeline permitirá resolver.
+
+Este avance sirve como base para validar las decisiones técnicas antes de proceder a la implementación del pipeline.
+
+Aunque muchas de las herramientas están ya seleccionadas, el estudiantes deberá analizar las decisiones técnicas de uso de las mismas y pensar en otras posibles de solucionar el problema con ventajas y desventajas
+
+💾Base de datos core
+👉 Carpeta de data para el proyecto
+https://drive.google.com/drive/folders/1bqPXxUzm8k8ZO9rikp4VSE5MVW_7ZymD?usp=drive_link
+
+Ubicacion local: C:\Users\CTI23994\Dropbox\Data Engineering - HENRY\M4\proyecto_integrador_m4\0. Data
+
+----------------------------------------------------------------------------------------------------------------------------
+
+#Segundo avance Proyecto Integrador
+ByHENRY ㅤ
+Lesson 8 of 9
+INGESTA DE DATOS CON AIRBYTE
+
+Contexto del proyecto y rol del estudiante
+
+Con la arquitectura definida, el foco pasa a construir el componente de ingesta del pipeline. En este avance, configuras Airbyte para integrar datos desde APIs públicas y bases PostgreSQL, cargándolos en la capa raw del Data Lake.
+
+Como responsable de esta etapa, debes garantizar la conectividad, validar los datos almacenados y documentar las decisiones de configuración. Tu trabajo habilita el flujo inicial de datos hacia el sistema, cumpliendo con criterios de frecuencia, consistencia y trazabilidad que permitirán escalar hacia flujos de transformación posteriores.
+
+¿Empezamos?
+
+En este punto, vamos a avanzar con los siguientes pasos:
+
+Consigna
+Configuración de Airbyte Cloud (Free Tier) como componente de ingesta del pipeline ELT, configurando conectores desde una API públicay una base de datos PostgreSQL pública, ambos dirigidos hacia la capa raw/ del bucket S3 en AWS. Se documentan las conexiones, frecuencia de sincronización y esquema de los datos extraídos
+
+Configuración del conector desde API pública utilizando el conector HTTP genérico de Airbyte para extraer datos. La extracción se limita a una ejecución manual por día durante el período de prueba gratuita para ajustarse al límite de sincronizaciones del Free Tier. El destino de los datos es el bucket S3 particionado.
+
+Configuración del conector desde base de datos pública PostgreSQL. Se establece una conexión segura mediante credenciales de solo lectura y se sincroniza la tabla hacia S3. Se prioriza sincronización completa inicial y luego incremental.
+
+Validación de que los datos son correctamente almacenados en el S3 en el formato esperado (i.e., Parquet) y en la ubicación definida.
+
+- Conocimientos necesarios
+Ingesta de datos, 
+
+APIs REST, 
+
+Bases de datos relacionales, 
+
+Airbyte Cloud, 
+
+AWS S3, 
+
+Estructura
+
+Data Lakes.
+
+- Tech Stack necesario
+Python
+
+Airbyte 
+
+AWS S3 
+
+----------------------------------------------------------------------------------------------------------------------------
+
+#Tercer avance Proyecto Integrador
+ByHENRY ㅤ
+Lesson 7 of 8
+PROCESAMIENTO DE DATOS CON SPARK
+
+Contexto del proyecto y rol del estudiante
+
+Una vez que los datos han sido integrados al Data Lake, tu rol se centra en su procesamiento y transformación.
+
+Como Ingeniero de Datos, implementas jobs en PySpark que combinan y limpian los datos para responder preguntas de negocio. Aplicarás técnicas de optimización como particionamiento, caching y control de operaciones de shuffle, asegurando eficiencia y escalabilidad.
+
+Esta etapa marca el paso de los datos desde la capa raw a la processed, acercándolos a su versión final lista para el análisis.
+
+¿Empezamos?
+
+En este punto, vamos a avanzar con los siguientes pasos:
+
+- Consigna
+Desarrollo de scripts en PySpark que implementen las transformaciones requeridas para responder a las preguntas de negocio definidas.
+
+Aplicación de transformaciones que permitan combinar datos no estructurados con fuentes estructuradas, facilitando un análisis integral dentro del Data Lake.
+
+Optimización del código en Apache Spark para maximizar el rendimiento, mediante técnicas como particionamiento eficiente, uso estratégico de caché, control de operaciones de shuffle y ajustes específicos en la configuración del entorno de ejecución.
+
+-Conocimientos necesarios
+Spark
+
+Python
+
+Cloud Computing
+
+AWS
+
+- Tech Stack necesario
+EC2
+
+EMR or Databricks
+
+Spark
+
+Python
+
+- Notas extra del avance:
+Se pretende que los estudiantes realicen las transformaciones necesarias para responder las preguntas de negocio usando Pyspark y que configuren un job en Spark enviando el código a través de Spark-submit
+
+----------------------------------------------------------------------------------------------------------------------------
+
+#Avance Proyecto Integrador
+ByHENRY ㅤ
+Lesson 6 of 7
+Orquestación y CI/CD
+
+Contexto del proyecto y rol del estudiante
+
+Ahora que las etapas de ingesta y transformación están operativas, tu responsabilidad es integrarlas y automatizarlas.
+
+Despliegas Apache Airflow en EC2 y defines DAGs que orquestan los flujos del pipeline de forma segura, manejando dependencias, reintentos y notificaciones. Además, introduces CI/CD con GitHub Actions para asegurar integridad ante cambios. Tu trabajo convierte el pipeline en un sistema mantenible, automatizado y preparado para operación continua.
+
+Step 1
+📝CONSIGNAS
+Provisionamiento de una instancia EC2 usando AWS Free Tier y despliegue de Apache Airflow, configurando el entorno (Docker Compose) y asegurando acceso seguro vía IAM y Security Groups.
+
+Creación del DAG principal en Airflow que dispare la ejecución de los conectores de Airbyte para ingesta batch y ejecute los jobs de Apache Spark para transformar datos desde las capas del Data Lake. 
+
+Implementación de tareas en el DAG para copiar o mover ficheros transformados hacia la capa gold, incluyendo particionamiento y formato Parquet/Delta.
+
+Configuración de dependencias, reintentos y notificaciones (por ejemplo, envío de logs o alertas por fallos a un canal de Slack o email).
+
+Pruebas de orquestación: ejecución manual y agendada (cron), verificación de estados de tareas, tiempos de ejecución y consistencia de datos entre capas.
+
+Step 2
+🤓Conocimientos necesarios
+Orquestación
+
+Pipeline de datos
+
+Computación en la nube
+
+AWS EC2
+
+Airflow
+
+Step 3
+💻 Tech Stack necesario
+AWS EC2, 
+
+Airflow, 
+
+AWS S3, 
+
+Airbyte
+
+----------------------------------------------------------------------------------------------------------------------------
+#Extra Proyecto Integrador
+ByHENRY ㅤ
+Lesson 13 of 14
+Streaming
+
+Contexto del proyecto y rol del estudiante
+
+En esta fase final, das un paso hacia el procesamiento en tiempo real. Despliegas Apache Kafka y configuras Spark Structured Streaming para capturar eventos en vivo y consolidarlos junto con los datos batch en una capa gold unificada.
+
+En tu rol, aseguras que el sistema pueda operar en una arquitectura Lambda, integrando flujos batch y streaming sin perder consistencia. Esta integración permite que la organización tome decisiones basadas en datos tanto históricos como en tiempo real, completando una solución moderna, escalable y robusta.
+
+📝CONSIGNAS
+Despliegue de Apache Kafka en una instancia EC2 utilizando Docker Compose, habilitando la creación de topics para la recepción de datos en tiempo real (requiere validación).
+
+Configuración de un consumidor Spark Structured Streaming, que consuma datos desde Kafka, aplique transformaciones básicas y los escriba en la capa raw-streaming del bucket S3 en formato Parquet.
+
+Implementación de transformaciones adicionales con PySpark que enriquezcan los datos en streaming utilizando datos existentes de la capa processed de origen batch  y escriban los resultados en una capa processed-streaming.
+
+Consolidación de los datos procesados (batch y streaming) en una capa gold unificada, que permita a los analistas y científicos consumir información confiable e integrada, indistintamente de la naturaleza de origen de los datos.
+
+Actualización del diagrama de arquitectura del pipeline para reflejar claramente el nuevo componente de ingesta en tiempo real, sus interacciones con las capas del Data Lake, y cómo se orquesta en conjunto con las tareas batch.
+
+🤓Conocimientos necesarios
+Apache Kafka, 
+
+Procesamiento en streaming con Spark, 
+
+Arquitectura Lambda, 
+
+Integración batch/streaming, 
+
+Almacenamiento en Data Lakes
+
+💻 Tech Stack necesario
+AWS EC2, 
+
+Airflow, 
+
+AWS S3, 
+
+Airbyte
+
+🔝Notas Extras del avance
+Modificación del DAG de Airflow (opcional) para incorporar tareas que gestionen el pipeline de streaming, o bien, documentación sobre cómo se automatiza su ejecución con Spark Structured Streaming.
+
+✨Extra Credit
+Integrar un flujo básico de CI/CD usando GitHub Actions en su plan gratuito, que desencadene la actualización del DAG y la validación de configuraciones de Airflow cada vez que se haga push al repositorio.
+
+Implementar validación de calidad de datos en el pipeline, usando un framework como Great Expectations o tests personalizados en Python para revisar esquema, valores nulos y rangos válidos, y reportar resultados como tareas dentro del DAG.

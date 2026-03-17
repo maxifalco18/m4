@@ -1,0 +1,78 @@
+# === Python ===
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+env/
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# === Entornos virtuales ===
+.env
+*.env.local
+*.env.production
+
+# === AWS Credentials — NUNCA commitear ===
+.aws/
+aws_credentials
+*.pem
+*.key
+
+# === Secrets / Configs sensibles ===
+secrets.yml
+secrets.json
+*_secret.*
+*_credentials.*
+
+# === Spark ===
+spark-warehouse/
+metastore_db/
+derby.log
+*.log
+
+# === Airflow ===
+orchestration/logs/
+orchestration/dags/__pycache__/
+airflow.db
+airflow-webserver.pid
+
+# === Jupyter Notebooks ===
+.ipynb_checkpoints/
+*.ipynb
+
+# === IDE ===
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# === Testing ===
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# === Great Expectations ===
+quality/great_expectations/uncommitted/
+quality/great_expectations/.ge_store_backend_id
+
+# === Docker ===
+orchestration/.docker/
+streaming/.docker/
+
+# === Data local (no commitear datos crudos) ===
+0. Data/*.parquet
+0. Data/*.csv
+# Nota: los .json de ejemplo pueden quedar versionados si son pequeños
+
+# === Terraform / IaC temporales ===
+*.tfstate
+*.tfstate.backup
+.terraform/
