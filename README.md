@@ -105,11 +105,11 @@ python infrastructure/lake_formation/setup_lakeformation.py
 
 | Avance | Tema | Estado | Puntos |
 |--------|------|--------|--------|
-| 1 | Diseño de Arquitectura | ✅ En progreso | 10 |
-| 2 | Ingesta con Airbyte | 🔜 Pendiente | 10 |
-| 3 | Procesamiento con Spark | 🔜 Pendiente | 15 |
-| 4 | Orquestación y CI/CD | 🔜 Pendiente | 15 |
-| 5 | Streaming con Kafka | 🔜 Pendiente | 10 |
+| 1 | Diseño de Arquitectura | ✅ Completado | 10 |
+| 2 | Ingesta con Airbyte | ✅ Completado | 10 |
+| 3 | Procesamiento con Spark | ✅ Completado | 15 |
+| 4 | Orquestación y CI/CD | ✅ Completado | 15 |
+| 5 | Streaming con Kafka | ✅ Completado | 10 |
 
 ## 🤝 Convenciones de Desarrollo
 
