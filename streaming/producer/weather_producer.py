@@ -110,5 +110,5 @@ def simulate_stream(producer: KafkaProducer, file_path: Path, delay_seconds: flo
 
 if __name__ == "__main__":
     producer = create_producer()
-    # Enviamos 2 eventos por segundo para ver flujo en tiempo real sin saturar
-    simulate_stream(producer, DATA_FILE, delay_seconds=0.5)
+    # Enviamos 1 evento por segundo para ver flujo en tiempo real sin saturar (Demo)
+    simulate_stream(producer, DATA_FILE, delay_seconds=1.0)

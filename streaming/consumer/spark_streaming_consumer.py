@@ -77,12 +77,16 @@ def process_micro_batch(micro_batch_df, batch_id):
         return
 
     # 1. Transformar datos del Streaming (Capa Processed)
+    # Se agrega withWatermark para el manejo de Late Data (Small File/OOM prep)
+    # Permite al engine limpiar el estado de memoria para eventos más antiguos de 2 horas.
     stream_processed = (
         micro_batch_df
         .filter(F.col("temp").isNotNull())  # Filtro de calidad de datos
+        .withColumn("datetime_utc", F.to_timestamp(F.col("dt_iso"), "yyyy-MM-dd HH:mm:ss Z"))
+        .withWatermark("datetime_utc", "2 hours")  # <-- LATE DATA HANDLING
         .select(
             F.col("dt").alias("unix_timestamp"),
-            F.to_timestamp(F.col("dt_iso"), "yyyy-MM-dd HH:mm:ss Z").alias("datetime_utc"),
+            F.col("datetime_utc"),
             F.col("city_name"),
             F.col("lat"),
             F.col("lon"),
@@ -90,8 +94,8 @@ def process_micro_batch(micro_batch_df, batch_id):
             F.col("humidity").alias("humidity_pct"),
             F.col("wind_speed").alias("wind_speed_ms"),
             F.col("weather_main").alias("weather_category"),
-            F.year(F.to_timestamp(F.col("dt_iso"), "yyyy-MM-dd HH:mm:ss Z")).alias("year"),
-            F.month(F.to_timestamp(F.col("dt_iso"), "yyyy-MM-dd HH:mm:ss Z")).alias("month")
+            F.year(F.col("datetime_utc")).alias("year"),
+            F.month(F.col("datetime_utc")).alias("month")
         )
     )
 
