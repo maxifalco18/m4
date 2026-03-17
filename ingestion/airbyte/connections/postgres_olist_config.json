@@ -1,0 +1,108 @@
+{
+  "_comment": "Configuración del conector PostgreSQL → S3 en Airbyte Cloud. Importar este JSON como referencia al configurar la conexión manualmente en la UI de Airbyte.",
+
+  "source": {
+    "connector": "PostgreSQL",
+    "version": "3.x (latest)",
+    "connection": {
+      "host": "${POSTGRES_HOST}",
+      "port": 5432,
+      "database": "postgres",
+      "username": "readonly_user",
+      "password": "${POSTGRES_PASSWORD}",
+      "ssl_mode": "require",
+      "replication_method": "Standard",
+      "_comment_replication": "En Free Tier de Supabase no hay acceso a logical replication. Usamos Standard con cursor."
+    },
+    "streams": [
+      {
+        "stream_name": "olist_orders",
+        "sync_mode": "incremental",
+        "cursor_field": "order_purchase_timestamp",
+        "destination_sync_mode": "append",
+        "_comment": "Tabla central. Incremental por timestamp de compra. Nuevas órdenes se appendean."
+      },
+      {
+        "stream_name": "olist_order_items",
+        "sync_mode": "incremental",
+        "cursor_field": "updated_at",
+        "destination_sync_mode": "append",
+        "_comment": "Items por orden. Incremental por updated_at."
+      },
+      {
+        "stream_name": "olist_order_payments",
+        "sync_mode": "incremental",
+        "cursor_field": "updated_at",
+        "destination_sync_mode": "append",
+        "_comment": "Pagos. Incremental por updated_at."
+      },
+      {
+        "stream_name": "olist_order_reviews",
+        "sync_mode": "incremental",
+        "cursor_field": "review_creation_date",
+        "destination_sync_mode": "append",
+        "_comment": "Reseñas. Incremental por fecha de creación."
+      },
+      {
+        "stream_name": "olist_customers",
+        "sync_mode": "full_refresh",
+        "destination_sync_mode": "overwrite",
+        "_comment": "Full Refresh. Tabla de dimensión — ~100K filas, rápido."
+      },
+      {
+        "stream_name": "olist_products",
+        "sync_mode": "full_refresh",
+        "destination_sync_mode": "overwrite",
+        "_comment": "Full Refresh. Catálogo de productos — ~33K filas."
+      },
+      {
+        "stream_name": "olist_sellers",
+        "sync_mode": "full_refresh",
+        "destination_sync_mode": "overwrite",
+        "_comment": "Full Refresh. ~3K vendedores."
+      },
+      {
+        "stream_name": "olist_geolocation",
+        "sync_mode": "full_refresh",
+        "destination_sync_mode": "overwrite",
+        "_comment": "Full Refresh. Tabla de referencia geográfica."
+      },
+      {
+        "stream_name": "olist_product_category_name_translation",
+        "sync_mode": "full_refresh",
+        "destination_sync_mode": "overwrite",
+        "_comment": "Full Refresh. Lookup ~70 filas."
+      }
+    ]
+  },
+
+  "destination": {
+    "connector": "S3",
+    "connection": {
+      "s3_bucket_name": "${S3_BUCKET_NAME}",
+      "s3_bucket_path": "raw/ecommerce",
+      "s3_bucket_region": "${AWS_REGION}",
+      "access_key_id": "_use_IAM_role_not_access_key",
+      "secret_access_key": "_use_IAM_role_not_access_key",
+      "_comment_auth": "Preferir IAM Role (AirbyteS3Role). Si se deben usar access keys, nunca commitear. Usar variables de entorno de Airbyte.",
+      "format": {
+        "format_type": "Parquet",
+        "compression_codec": "SNAPPY",
+        "block_size_mb": 128,
+        "page_size_kb": 1024
+      },
+      "s3_path_format": "${STREAM_NAME}/${YEAR}/${MONTH}/${DAY}/",
+      "_comment_path": "Cada tabla se particiona en su propia carpeta con fecha de sync."
+    }
+  },
+
+  "schedule": {
+    "schedule_type": "manual",
+    "_comment": "Free Tier: ejecución manual 1x/día. El DAG de Airflow (Avance 4) disparará la sync via API de Airbyte."
+  },
+
+  "normalization": {
+    "enabled": false,
+    "_comment": "La normalización la hacemos en Spark (Avance 3), no en Airbyte. Esto mantiene la capa raw inmutable."
+  }
+}

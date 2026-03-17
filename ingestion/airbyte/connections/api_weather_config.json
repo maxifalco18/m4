@@ -1,0 +1,108 @@
+{
+  "_comment": "Configuración del conector HTTP genérico (Low-code CDK) para OpenWeatherMap → S3. Esta config documenta los parámetros a configurar manualmente en Airbyte Cloud.",
+
+  "source": {
+    "connector": "Low-code HTTP API (Declarative YAML / Builder)",
+    "version": "latest",
+    "connection": {
+      "base_url": "https://api.openweathermap.org/data/2.5",
+      "_comment_base_url": "Usamos la API gratuita de Current/Forecast. La History API requiere plan de pago. Alternativa: usar los JSON descargados en 0. Data/ como source local.",
+
+      "authentication": {
+        "type": "ApiKeyAuth",
+        "inject_into": "request_parameter",
+        "field_name": "appid",
+        "api_key": "${OPENWEATHER_API_KEY}"
+      },
+
+      "streams": [
+        {
+          "name": "weather_current",
+          "url_path": "/weather",
+          "http_method": "GET",
+          "request_parameters": {
+            "lat": "-41.81",
+            "lon": "-68.91",
+            "units": "metric",
+            "_comment": "Coordenadas de Patagonia. Unidades métricas (Celsius, m/s)."
+          },
+          "response_mapping": {
+            "_comment": "El response es un JSON flat. Airbyte lo parsea automáticamente.",
+            "primary_key": "dt",
+            "record_selector": "$"
+          }
+        },
+        {
+          "name": "weather_forecast",
+          "url_path": "/forecast",
+          "http_method": "GET",
+          "request_parameters": {
+            "lat": "-41.81",
+            "lon": "-68.91",
+            "units": "metric",
+            "cnt": "40",
+            "_comment": "Forecast 5 días / 3 horas. cnt=40 = max registros."
+          },
+          "response_mapping": {
+            "primary_key": "dt",
+            "record_selector": "$.list[*]",
+            "_comment": "Los registros están dentro del array 'list' del response."
+          }
+        }
+      ],
+
+      "error_handling": {
+        "backoff_strategy": {
+          "type": "ExponentialBackoff",
+          "initial_wait_seconds": 2,
+          "max_wait_seconds": 60,
+          "backoff_factor": 2,
+          "_comment": "Rate limit de OpenWeatherMap Free: 60 calls/min. Backoff exponencial: 2s → 4s → 8s → ... → max 60s."
+        },
+        "http_status_retry": [429, 500, 502, 503, 504],
+        "max_retries": 5,
+        "response_error_handler": {
+          "error_message_path": "$.message",
+          "_comment": "OpenWeatherMap devuelve {'cod': 429, 'message': 'Your account is temporary blocked...'}"
+        }
+      },
+
+      "pagination": {
+        "type": "NoPagination",
+        "_comment": "La API weather/forecast no pagina. Cada request devuelve todos los registros solicitados. Si se usara la API de History Bulk, se implementaría OffsetPagination."
+      },
+
+      "rate_limiting": {
+        "calls_per_minute": 55,
+        "_comment": "Dejamos margen: 55/60 para evitar bloqueos. El Free Tier permite 60 calls/min."
+      }
+    }
+  },
+
+  "destination": {
+    "connector": "S3",
+    "connection": {
+      "s3_bucket_name": "${S3_BUCKET_NAME}",
+      "s3_bucket_path": "raw/weather_api",
+      "s3_bucket_region": "${AWS_REGION}",
+      "format": {
+        "format_type": "Parquet",
+        "compression_codec": "SNAPPY"
+      },
+      "s3_path_format": "${STREAM_NAME}/${YEAR}/${MONTH}/${DAY}/"
+    }
+  },
+
+  "schedule": {
+    "schedule_type": "manual",
+    "_comment": "Free Tier: 1 sync manual/día. Disparado por Airflow DAG en Avance 4."
+  },
+
+  "alternative_strategies": {
+    "_comment": "Si la API gratuita no tiene suficiente historia, usar los archivos JSON pre-descargados en 0. Data/ como fuente File-based en Airbyte (conector 'File' apuntando a un servidor HTTP local o S3 upload directo).",
+    "local_json_approach": {
+      "description": "Subir Patagonia_-41.json directamente a s3://bucket/raw/weather_api/ usando aws s3 cp",
+      "command": "aws s3 cp '0. Data/Patagonia_-41.json' s3://${S3_BUCKET_NAME}/raw/weather_api/manual_upload/"
+    }
+  }
+}
