@@ -30,7 +30,7 @@ import os
 import sys
 from datetime import datetime
 
-from pyspark.sql import DataFrame
+from pyspark.sql import DataFrame, Window
 from pyspark.sql import functions as F
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
@@ -209,8 +209,7 @@ def kpi_new_vs_returning(fact_orders: DataFrame) -> DataFrame:
             "pct_of_monthly_orders",
             F.round(
                 F.col("orders") / F.sum("orders").over(
-                    __import__("pyspark.sql", fromlist=["Window"]).Window
-                    .partitionBy("year", "month")
+                    Window.partitionBy("year", "month")
                 ) * 100, 2
             )
         )

@@ -293,3 +293,38 @@ Modificación del DAG de Airflow (opcional) para incorporar tareas que gestionen
 Integrar un flujo básico de CI/CD usando GitHub Actions en su plan gratuito, que desencadene la actualización del DAG y la validación de configuraciones de Airflow cada vez que se haga push al repositorio.
 
 Implementar validación de calidad de datos en el pipeline, usando un framework como Great Expectations o tests personalizados en Python para revisar esquema, valores nulos y rangos válidos, y reportar resultados como tareas dentro del DAG.
+
+
+#CRITERIOS DE EVALUACION
+
+CATEGORÍA A EVALUAR | REQUERIMIENTO POR CATEGORÍA | EXCELENTE | SATISFACTORIO | INSUFICIENTE
+
+Diseño de Arquitectura del Data Lake (10 pts)
+Requerimiento: Elaborar un diseño de arquitectura completo y justificado, con diagrama, capas definidas y stack tecnológico.
+- Excelente: Diseño detallado, bien justificado, diagrama claro con herramientas específicas, y stack adecuadamente seleccionado.
+- Satisfactorio: Diseño adecuado pero con justificaciones generales o sin detalle de herramientas/tecnologías.
+- Insuficiente: Diseño incompleto, sin diagrama o sin definición clara de capas o herramientas.
+
+Ingesta de datos con Airbyte (10 pts)
+Requerimiento: Configurar conectores desde una API pública y una base de datos PostgreSQL hacia S3, con validación de datos.
+- Excelente: Conectores correctamente configurados, ingesta validada y documentada, uso correcto del conector HTTP y PostgreSQL.
+- Satisfactorio: Conectores configurados pero con validación parcial o documentación escasa.
+- Insuficiente: Ingesta incorrecta o sin validación/documentación de las conexiones.
+
+Procesamiento con PySpark (15 pts)
+Requerimiento: Transformar datos en Spark con código optimizado y responder preguntas de negocio.
+- Excelente: Transformaciones relevantes, código optimizado (particionamiento, caché, sin shuffles innecesarios), y resultados claros.
+- Satisfactorio: Transformaciones funcionales pero con optimización limitada o sin conexión clara a preguntas.
+- Insuficiente: Código incorrecto, sin optimización ni conexión con las preguntas de negocio.
+
+Orquestación del pipeline con Airflow (10 pts)
+Requerimiento: Implementar un DAG que integre Airbyte, Spark, y gestione capas del Data Lake con control de errores.
+- Excelente: DAG completo, bien estructurado, manejo de dependencias y errores, integración correcta entre componentes.
+- Satisfactorio: DAG funcional pero con estructura mejorable o manejo básico de errores.
+- Insuficiente: DAG incompleto o sin conexión entre tareas clave.
+
+Streaming con Kafka y Spark (10 pts)
+Requerimiento: Implementar un pipeline de streaming funcional.
+- Excelente: Pipeline correctamente implementado, con integración Kafka-Spark, procesamiento en tiempo real y manejo de offsets.
+- Satisfactorio: Implementación básica funcional pero con limitaciones o sin robustez.
+- Insuficiente: Sin implementación o integración del pipeline de streaming.
