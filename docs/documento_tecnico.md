@@ -1,8 +1,9 @@
-# Documento Técnico — Avance 1: Diseño de la Arquitectura
-### Pipeline ETLT Escalable sobre Data Lake en AWS
+# Documento Técnico — Pipeline ETLT Escalable sobre Data Lake en AWS
+### Arquitectura Medallion + Lambda · AWS S3 · Spark · Airflow · Kafka
 
-**Proyecto Integrador M4 — Data Engineering Bootcamp (ByHENRY)**
-**Autor:** Maximiliano Falco | **Fecha:** Marzo 2026 | **Versión:** 1.0
+**Proyecto Integrador M4 — Data Engineering Bootcamp (ByHENRY)**  
+**Autor:** Maximiliano Falco | **Fecha:** Marzo 2026 | **Versión:** Final  
+**Cubre:** Avances 1–5 + CI/CD + Calidad de Datos
 
 ---
 
@@ -10,7 +11,7 @@
 
 La organización requiere migrar su infraestructura de datos a la nube para gestionar fuentes de información heterogéneas y crecientes. El desafío central es diseñar un pipeline de tipo **ETLT** (Extract, Transform, Load, Transform) que sea escalable, costo-eficiente y que permita responder a preguntas de negocio concretas sobre comportamiento de clientes, performance de ventas y factores externos como el clima.
 
-El presente documento describe la arquitectura técnica seleccionada, justifica las decisiones de diseño y define la base estructural sobre la cual se construirán los avances posteriores del proyecto.
+El presente documento describe la arquitectura técnica implementada, justifica las decisiones de diseño adoptadas en cada avance, documenta los resultados del pipeline y demuestra cómo el sistema responde a las preguntas de negocio planteadas.
 
 ---
 
@@ -62,18 +63,36 @@ El sistema implementa una **Arquitectura Medallion** en tres capas (Bronze, Silv
 │  kpi_weather_sales_impact / unified_analytics                              │
 │  Formato: Parquet o Delta Lake | Optimizado para consumo analítico          │
 └─────────────────────────────────────────────────────────────────────────────┘
-          ↑
-          │  ARQUITECTURA LAMBDA (Avance 5)
-          │
-┌─────────┴─────────────────────────────────────────────────────────────────┐
-│  CAPA STREAMING                                                            │
-│  Kafka (EC2) → Spark Structured Streaming                                  │
-│  raw-streaming/ → processed-streaming/ → gold/unified_analytics/          │
-└────────────────────────────────────────────────────────────────────────────┘
-
-     Orquestación: Apache Airflow (EC2 + Docker) | Monitoreo: DAG + Alertas Slack
-     Gobernanza:   AWS Lake Formation + IAM Roles (sin access keys en texto plano)
-     CI/CD:        GitHub Actions (lint + tests + deploy DAGs)
+          ▲  ▲
+          │  │  ARQUITECTURA LAMBDA — Unificación Batch + Real-time
+          │  │
+ ┌────────┴──┴───────────────────────────────────────────────────────────────┐
+ │  CAPA STREAMING                                                            │
+ │                                                                            │
+ │  [OpenWeatherMap API] ──► weather_producer.py                             │
+ │                                    │                                       │
+ │                                    ▼                                       │
+ │         APACHE KAFKA (Docker Compose en EC2)                               │
+ │         Topic: weather-events-rt   (3 particiones, 24h retención)          │
+ │                                    │                                       │
+ │                                    ▼                                       │
+ │  Spark Structured Streaming consumer (foreachBatch + watermark 2h)        │
+ │          │                          │                                       │
+ │          ▼                          ▼                                       │
+ │  raw-streaming/           processed-streaming/                             │
+ │  (Parquet append)         (enriquecido con processed/)                     │
+ │                                    │                                       │
+ │                                    ▼                                       │
+ │         UNION con Batch View  ──► gold/lambda_weather_unified/             │
+ │         (Serving Layer — Batch ∪ Real-time)                                │
+ │                                                                            │
+ │  Checkpoints: s3://bucket/_checkpoints/streaming_*  (fault-tolerant)      │
+ └────────────────────────────────────────────────────────────────────────────┘
+ 
+      Orquestación: Apache Airflow (EC2 + Docker) | Monitoreo: DAG + Alertas Slack
+      Streaming DAG: streaming_pipeline_dag.py (opcional, documenta automatización)
+      Gobernanza:   AWS Lake Formation + IAM Roles (sin access keys en texto plano)
+      CI/CD:        GitHub Actions (lint + tests + deploy DAGs automático a EC2)
 ```
 
 ### 2.2 Propósito de Cada Capa
@@ -190,11 +209,36 @@ Lake Formation implementa **data mesh** de facto: un único catálogo central (G
 
 ---
 
-## 7. Próximos Pasos
+## 7. Resultados del Pipeline — KPIs Implementados
 
-| Avance | Acción |
-|--------|--------|
-| **Avance 2** | Configurar Airbyte Cloud, fuente API + PostgreSQL → S3 raw/ en Parquet |
-| **Avance 3** | Desarrollar jobs PySpark: raw/ → processed/ → gold/ |
-| **Avance 4** | Desplegar Airflow en EC2 + GitHub Actions CI/CD |
-| **Avance 5** | Agregar Kafka + Spark Structured Streaming (Arquitectura Lambda) |
+Los jobs de Spark (`raw_to_processed.py` + `processed_to_gold.py`) producen **7 KPIs analíticos** en la capa Gold que responden directamente las preguntas de negocio del proyecto:
+
+| KPI (capa Gold) | Pregunta de negocio que responde | Dimensiones | Métrica clave |
+|-----------------|----------------------------------|-------------|---------------|
+| `kpi_top_products_by_category` | ¿Cuáles son los productos más vendidos por categoría? | Categoría, Mes/Año | Revenue total + unidades |
+| `kpi_customer_rfm` | ¿Qué clientes presentan mayor frecuencia y ticket? | Segmento RFM | Score R + F + M por cliente |
+| `kpi_revenue_by_region` | ¿Qué regiones generan más ingresos? | Estado, Trimestre | Revenue + estacionalidad |
+| `kpi_new_vs_returning_customers` | ¿Qué proporción son clientes nuevos vs. recurrentes? | Mes/Año, Tipo cliente | % órdenes por tipo |
+| `kpi_price_volume_correlation` | ¿Qué relación existe entre precio y volumen? | Bucket de precio, Categoría | Unidades por bracket |
+| `kpi_weather_sales_impact` | ¿Cómo impacta el clima en las ventas? | Temperatura, Lluvia, Día | Órdenes + Revenue por condición |
+| `kpi_payment_methods` | ¿Cómo varía el desempeño por método de pago? | Método, Cuotas | Revenue + cuotas promedio |
+
+Además, la **Arquitectura Lambda** (Avance 5) unifica los datos batch históricos con los eventos de clima en tiempo real de Kafka en `gold/lambda_weather_unified/`, permitiendo a los analistas consumir una capa Gold siempre actualizada.
+
+---
+
+## 8. Conclusiones
+
+El sistema implementado cumple con los objetivos del proyecto integrador en sus cinco dimensiones principales:
+
+1. **Arquitectura escalable**: El stack AWS S3 + Spark + Airflow + Kafka soporta horizontalmente mayores volúmenes sin cambios de código. La migración de EC2 a EMR o Databricks es directa.
+
+2. **Gobernanza y seguridad**: IAM Roles con mínimo privilegio, cifrado SSE-S3 en reposo, TLS obligatorio en tránsito, y Lake Formation para control de acceso granular por capa.
+
+3. **Calidad garantizada**: Validación post-ingesta (`validate_raw_data.py`), tests unitarios de PySpark (pytest), linting CI (flake8), y validación de DAGs en cada push.
+
+4. **Automatización completa**: El pipeline diario se ejecuta sin intervención manual — Airflow orquesta Airbyte + Spark, GitHub Actions despliega los DAGs automáticamente ante cada cambio en `main`.
+
+5. **Integración real-time**: La Arquitectura Lambda unifica datos históricos (batch) y datos en tiempo real (Kafka/Spark SS) en una capa Gold unificada, completando el ciclo de procesamiento moderno.
+
+El diseño está preparado para extenderse con nuevas fuentes de datos (Airbyte conectores adicionales), nuevas preguntas de negocio (nuevos KPIs en `processed_to_gold.py`), y mayor escala de procesamiento (EMR, MSK, Glue) sin cambios arquitecturales sustanciales.
