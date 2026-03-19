@@ -155,7 +155,6 @@ def create_glue_databases(glue_client, bucket_name: str, dry_run: bool) -> None:
                 DatabaseInput={
                     "Name": db_name,
                     "Description": db_config["description"],
-                    "LocationUri": location,
                     "Parameters": {
                         "classification": "parquet",
                         "layer": db_name.split("_")[0] if "_" in db_name else db_name,

@@ -80,4 +80,10 @@ Esta carpeta contiene capturas de pantalla que validan la ejecución real del pi
 
 ---
 
-> **Prioridad mínima**: al menos 1 captura de cada servicio (Airbyte, S3, Airflow, Kafka) para demostrar que el pipeline corría end-to-end.
+---
+
+## Estado Actual
+
+> [!NOTE]
+> Las capturas se generarán durante la ejecución del pipeline en la demo final.
+> Para reproducir, ejecutar los servicios según el `README.md` principal del proyecto.

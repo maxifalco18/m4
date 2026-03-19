@@ -82,13 +82,13 @@ def kpi_top_products_by_category(fact_items: DataFrame,
     # Broadcast join con dimensión productos (pequeña)
     items_enriched = broadcast_join(
         items_with_date,
-        dim_products.select("product_id", "product_category_name_en"),
+        dim_products.select("product_id", "product_category_name"),
         "product_id", "left"
     )
 
     return (
         items_enriched
-        .groupBy("product_category_name_en", "year", "month")
+        .groupBy("product_category_name", "year", "month")
         .agg(
             F.count("order_id").alias("units_sold"),
             F.round(F.sum("price"), 2).alias("gross_revenue_brl"),
@@ -229,7 +229,7 @@ def kpi_price_volume_correlation(fact_items: DataFrame, dim_products: DataFrame)
 
     items_with_cat = broadcast_join(
         fact_items,
-        dim_products.select("product_id", "product_category_name_en"),
+        dim_products.select("product_id", "product_category_name"),
         "product_id", "left"
     )
 
@@ -243,13 +243,13 @@ def kpi_price_volume_correlation(fact_items: DataFrame, dim_products: DataFrame)
              .when(F.col("price") < 500, "300-500 BRL")
              .otherwise("+500 BRL")
         )
-        .groupBy("product_category_name_en", "price_bucket")
+        .groupBy("product_category_name", "price_bucket")
         .agg(
             F.count("order_id").alias("units_sold"),
             F.round(F.avg("price"), 2).alias("avg_price_brl"),
             F.round(F.sum("price"), 2).alias("total_revenue_brl"),
         )
-        .orderBy("product_category_name_en", "avg_price_brl")
+        .orderBy("product_category_name", "avg_price_brl")
     )
 
 

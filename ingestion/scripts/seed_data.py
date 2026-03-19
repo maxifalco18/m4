@@ -23,9 +23,12 @@ import logging
 import os
 import sys
 from pathlib import Path
+from dotenv import load_dotenv
 
 import psycopg2
 from psycopg2.extras import execute_values
+
+load_dotenv()
 
 logging.basicConfig(
     level=logging.INFO,

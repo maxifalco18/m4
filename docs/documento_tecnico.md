@@ -20,6 +20,7 @@ El presente documento describe la arquitectura técnica implementada, justifica 
 El sistema implementa una **Arquitectura Medallion** en tres capas (Bronze, Silver, Gold) sobre AWS S3, extendida con los principios de la **Arquitectura Lambda** para soportar procesamiento batch y streaming en forma unificada.
 
 ### 2.1 Diagrama de Flujo de Datos
+> 📐 Ver el diagrama interactivo de la arquitectura en [arquitectura_pipeline.md](./arquitectura_pipeline.md)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐

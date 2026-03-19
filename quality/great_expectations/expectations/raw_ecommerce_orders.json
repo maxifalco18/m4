@@ -1,0 +1,64 @@
+{
+  "data_asset_type": null,
+  "expectation_suite_name": "raw_ecommerce_orders",
+  "expectations": [
+    {
+      "expectation_type": "expect_table_columns_to_match_ordered_list",
+      "kwargs": {
+        "column_list": [
+          "order_id",
+          "customer_id",
+          "order_status",
+          "order_purchase_timestamp",
+          "order_approved_at",
+          "order_delivered_carrier_date",
+          "order_delivered_customer_date",
+          "order_estimated_delivery_date"
+        ]
+      },
+      "meta": {}
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": {
+        "column": "order_id"
+      },
+      "meta": {}
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": {
+        "column": "customer_id"
+      },
+      "meta": {}
+    },
+    {
+      "expectation_type": "expect_column_values_to_be_in_set",
+      "kwargs": {
+        "column": "order_status",
+        "value_set": [
+          "delivered",
+          "shipped",
+          "canceled",
+          "invoiced",
+          "processing",
+          "approved",
+          "unavailable",
+          "created"
+        ]
+      },
+      "meta": {}
+    }
+  ],
+  "ge_cloud_id": null,
+  "meta": {
+    "citations": [
+      {
+        "citation_date": "2024-03-19T00:00:00.000000Z",
+        "comment": "Suite inicial para validación de raw/ecommerce",
+        "batch_request": null
+      }
+    ],
+    "great_expectations_version": "0.18.8"
+  }
+}

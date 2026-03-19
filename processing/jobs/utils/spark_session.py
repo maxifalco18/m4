@@ -140,6 +140,11 @@ def _configure_s3_local(builder, region: str):
         .config("spark.hadoop.fs.s3a.endpoint", f"s3.{region}.amazonaws.com")
         .config("spark.hadoop.fs.s3a.connection.ssl.enabled", "true")
         .config("spark.hadoop.fs.s3a.path.style.access", "false")
+        # Fix del driver oficial HADOOP-AWS (NumberFormatException: 60s, 200s, 24h)
+        .config("spark.hadoop.fs.s3a.threads.keepalivetime", "60")
+        .config("spark.hadoop.fs.s3a.connection.establish.timeout", "5000")
+        .config("spark.hadoop.fs.s3a.connection.timeout", "200000")
+        .config("spark.hadoop.fs.s3a.multipart.purge.age", "86400")
         # Fast upload: usa multipart para archivos grandes
         .config("spark.hadoop.fs.s3a.fast.upload", "true")
         .config("spark.hadoop.fs.s3a.fast.upload.buffer", "bytebuffer")

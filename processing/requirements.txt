@@ -17,3 +17,6 @@ psycopg2-binary==2.9.9   # Driver PG para seed_data.py
 
 # Utilities
 python-dotenv==1.0.0     # Carga .env automáticamente
+
+# Data Quality
+great-expectations==0.18.8

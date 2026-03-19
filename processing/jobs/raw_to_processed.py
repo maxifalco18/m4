@@ -44,6 +44,12 @@ from jobs.utils.transformations import (
     normalize_string_columns,
     parse_weather_json,
 )
+from jobs.utils.data_quality import (
+    check_nulls,
+    check_unique,
+    check_range,
+    check_allowed_values,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s — %(message)s")
 logger = logging.getLogger("raw_to_processed")
@@ -112,7 +118,7 @@ def build_dim_products(raw_products: DataFrame, raw_category_translation: DataFr
     Usa broadcast join para unir con la tabla de traducción (~71 filas).
     Broadcast elimina el shuffle — la tabla de traducción se envía a todos los nodos.
     """
-    logger.info("Construyendo dim_products...")
+    logger.info("Construyendo dim_products (sin traducciones por ahora)...")
     df = (
         raw_products
         .select(
@@ -128,14 +134,6 @@ def build_dim_products(raw_products: DataFrame, raw_category_translation: DataFr
         )
         .filter(F.col("product_id").isNotNull())
     )
-
-    category_en = raw_category_translation.select(
-        "product_category_name",
-        F.col("product_category_name_english").alias("product_category_name_en"),
-    )
-
-    # Broadcast join: category_translation es pequeño (~71 filas, < 10 KB)
-    df = broadcast_join(df, category_en, "product_category_name", "left")
     return drop_duplicates_by_key(df, ["product_id"])
 
 
@@ -335,7 +333,7 @@ def main():
     raw_products  = read_raw_table(spark, "ecommerce", "olist_products")
     raw_sellers   = read_raw_table(spark, "ecommerce", "olist_sellers")
     raw_geo       = read_raw_table(spark, "ecommerce", "olist_geolocation")
-    raw_category  = read_raw_table(spark, "ecommerce", "olist_product_category_name_translation")
+    # raw_category  = read_raw_table(spark, "ecommerce", "olist_product_category_name_translation")
 
     # Clima (API o upload manual desde Patagonia_-41.json)
     raw_weather = read_raw_table(spark, "weather_api", "weather_current")
@@ -351,7 +349,7 @@ def main():
 
     dim_date        = build_date_dimension("2016-01-01", "2018-12-31")
     dim_customers   = build_dim_customers(raw_customers)
-    dim_products    = build_dim_products(raw_products, raw_category)
+    dim_products    = build_dim_products(raw_products, None)
     dim_sellers     = build_dim_sellers(raw_sellers)
     dim_geolocation = build_dim_geolocation(raw_geo)
     fact_orders     = build_fact_orders(raw_orders)
@@ -382,6 +380,23 @@ def main():
 
     # Clima: particionado por año/mes (joins con fact_orders en Gold)
     write_processed(weather, "weather_enriched", partition_cols=["year", "month"])
+
+    # ── [NUEVO] Verificaciones de Calidad Post-Procesamiento ─────────────
+    logger.info("\n[EXTRA] Ejecutando auditoría de calidad de datos...")
+    
+    dq_passed = True
+    dq_passed &= check_unique(dim_customers, ["customer_id"])
+    dq_passed &= check_nulls(dim_customers, ["customer_id", "customer_unique_id"])
+    dq_passed &= check_range(fact_items, "price", 0, 100000) # Precios razonables
+    dq_passed &= check_allowed_values(fact_orders, "order_status", [
+        "delivered", "shipped", "canceled", "invoiced", 
+        "processing", "approved", "unavailable", "created"
+    ])
+
+    if not dq_passed:
+        logger.warning("⚠️ El job completó pero se detectaron problemas de calidad de datos.")
+    else:
+        logger.info("✅ Auditoría de calidad de datos completada satisfactoriamente.")
 
     logger.info("\n🎉 Job raw_to_processed completado.")
     spark.stop()

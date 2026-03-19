@@ -1,0 +1,22 @@
+# quality/great_expectations/checkpoints/raw_ecommerce_checkpoint.yml
+name: raw_ecommerce_checkpoint
+config_version: 1.0
+class_name: Checkpoint
+run_name_template: "%Y%m%d-%H%M%S-raw-ecommerce-validation"
+expectation_suite_name: raw_ecommerce_orders
+batch_request:
+  datasource_name: raw_ecommerce_datasource
+  data_connector_name: default_inferred_data_connector_name
+  data_asset_name: orders
+  batch_spec_passthrough:
+    reader_method: parquet
+action_list:
+  - name: store_validation_result
+    action:
+      class_name: StoreValidationResultAction
+  - name: store_evaluation_params
+    action:
+      class_name: StoreEvaluationParametersAction
+  - name: update_data_docs
+    action:
+      class_name: UpdateDataDocsAction

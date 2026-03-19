@@ -13,6 +13,18 @@ from pyspark.sql.types import (
     DoubleType, IntegerType, StringType, StructField, StructType, TimestampType
 )
 
+import sys
+import os
+# Agregar el directorio raíz del proyecto al PYTHONPATH
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
+
+from processing.jobs.utils.transformations import (
+    drop_duplicates_by_key,
+    normalize_string_columns,
+    cast_timestamp_columns,
+    broadcast_join,
+)
+
 
 # --------------------------------------------------------------------------- #
 # Fixtures
@@ -21,6 +33,10 @@ from pyspark.sql.types import (
 @pytest.fixture(scope="session")
 def spark():
     """Crea una SparkSession local para tests. Se usa una sola por sesión de pytest."""
+    import sys
+    os.environ["PYSPARK_PYTHON"] = sys.executable
+    os.environ["PYSPARK_DRIVER_PYTHON"] = sys.executable
+
     return (
         SparkSession.builder
         .appName("unit-tests")
@@ -138,3 +154,32 @@ class TestDataQualityChecks:
         df = spark.createDataFrame(data, ["order_id", "customer_id"])
         invalid = df.filter(df.customer_id == "")
         assert invalid.count() == 1
+
+
+class TestRealTransformations:
+    """Tests que importan y usan las funciones reales de transformations.py."""
+
+    def test_drop_duplicates_by_key_real(self, spark):
+        """Usa la función real drop_duplicates_by_key del proyecto."""
+        data = [
+            ("order_001", "customer_A", "delivered"),
+            ("order_001", "customer_A", "delivered"),
+            ("order_002", "customer_B", "shipped"),
+        ]
+        df = spark.createDataFrame(data, ["order_id", "customer_id", "status"])
+        result = drop_duplicates_by_key(df, ["order_id"])
+        assert result.count() == 2
+
+    def test_normalize_string_columns_real(self, spark):
+        """Usa la función real normalize_string_columns."""
+        data = [
+            ("  São Paulo  ",),
+            ("RIO DE JANEIRO",),
+            ("",),
+        ]
+        df = spark.createDataFrame(data, ["city"])
+        result = normalize_string_columns(df, ["city"])
+        rows = result.collect()
+        assert rows[0]["city"] == "são paulo"
+        assert rows[1]["city"] == "rio de janeiro"
+        assert rows[2]["city"] is None  # vacío → null
